@@ -1,7 +1,6 @@
-from geoquiz.data import download_countries, load_countries
+from geoquiz.cleaning import build_countries_table
 
-download_countries()
-countries = load_countries()
+countries = build_countries_table()
 
-print(f"Loaded {len(countries)} countries")
-print(countries[0]["name"]["common"])
+print(countries.shape)
+print(countries.loc["ITA"])
