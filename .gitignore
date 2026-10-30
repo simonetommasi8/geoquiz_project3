@@ -224,3 +224,6 @@ __marimo__/
 
 # Downloaded data
 data/countries.json
+
+# Personal notebook to try code
+notebooks/data_exploration.ipynb
