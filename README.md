@@ -46,6 +46,15 @@ the quiz read their data from this table.
 - Two columns are computed: the **population density** (inhabitants per km²)
   and the **GDP per capita** (US$).
 
+## Libraries
+
+| Library | Used for |
+|---------|----------|
+| `requests` | downloading the countries dataset and calling the World Bank API |
+| `pandas` | building, merging and cleaning the table of the countries |
+
+Exact versions are listed in [`requirements.txt`](requirements.txt).
+
 ## Project Structure
 
 ```
