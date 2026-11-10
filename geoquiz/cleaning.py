@@ -11,6 +11,7 @@ from geoquiz.data import (
     fetch_indicator,
     load_countries,
 )
+from geoquiz.names import shorten_currency
 
 
 def get_currency_names(currencies):
@@ -53,6 +54,43 @@ def get_language_names(languages):
     return names
 
 
+def get_demonym(demonyms):
+    """
+    Get the English demonym of a country (e.g. "Italian").
+
+    Parameters
+    ----------
+    demonyms : dict
+        Mapping ``language code -> {"f": ..., "m": ...}``.
+
+    Returns
+    -------
+    str
+        The English demonym, or an empty string if it is missing.
+    """
+    return demonyms.get("eng", {}).get("m", "")
+
+
+def get_short_currencies(row):
+    """
+    Get the short names of the currencies of a country.
+
+    Parameters
+    ----------
+    row : pandas.Series
+        A row of the table, with ``currencies``, ``name`` and ``demonym``.
+
+    Returns
+    -------
+    list of str
+        The short names, computed with ``shorten_currency``.
+    """
+    short_currencies = []
+    for currency in row["currencies"]:
+        short_currencies.append(shorten_currency(currency, row["name"], row["demonym"]))
+    return short_currencies
+
+
 def build_basic_table(countries):
     """
     Keep the UN member states and turn their data into simple columns.
@@ -73,6 +111,7 @@ def build_basic_table(countries):
     table = pd.DataFrame()
     table["cca3"] = un_countries["cca3"]
     table["name"] = un_countries["name"].apply(lambda name: name["common"])
+    table["demonym"] = un_countries["demonyms"].apply(get_demonym)
     table["capitals"] = un_countries["capital"]
     table["flag"] = un_countries["flag"]
     table["region"] = un_countries["region"]
@@ -83,6 +122,7 @@ def build_basic_table(countries):
     table["borders"] = un_countries["borders"]
     table["currencies"] = un_countries["currencies"].apply(get_currency_names)
     table["languages"] = un_countries["languages"].apply(get_language_names)
+    table["short_currencies"] = table.apply(get_short_currencies, axis=1)
     return table
 
 
