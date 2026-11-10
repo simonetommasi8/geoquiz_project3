@@ -9,7 +9,9 @@ for the *Coding for Data Science and Data Management* course (A.Y. 2026/27).
 
 GeoQuiz automatically generates geography quizzes about the countries of the world.
 
-- Each quiz has **one question** and **four possible answers**, only one of which is correct.
+- The questions are about the **capital**, the **flag**, the **currency** and an
+  **official language** of a country.
+- Each question has **four possible answers**, only one of which is correct.
 - The **difficulty** can be fixed (easy, medium or hard) or **adaptive**, following
   the answers of the player: in harder questions, the countries are less known and
   the wrong answers are more similar to the right one.
@@ -36,6 +38,17 @@ even when their central points are far apart (e.g. Italy and France).
 In the **adaptive** mode, the quiz starts at the medium level, and each question
 is one level harder after a right answer and one level easier after a wrong one.
 In every quiz, each question is about a different country.
+
+Some answers contain the name of their country, which makes a question easy:
+capitals such as *Mexico City*, languages such as *Albanian*, currencies such as
+*Botswana pula*. The currencies are shown without the name of the country
+(*pula*, *franc*, *dollar*); the capitals and the languages that still reveal
+their country are only used in easy questions, whatever the GDP of the country.
+
+Every question has a single right answer: the values shared with the country
+(e.g. the euro of its neighbours) and the flags that look almost the same
+(Indonesia and Monaco, Chad and Romania, Netherlands and Luxembourg) are never
+used as wrong answers.
 
 
 ## Data
@@ -68,6 +81,9 @@ the quiz read their data from this table.
   **192 countries**.
 - Two columns are computed: the **population density** (inhabitants per km²)
   and the **GDP per capita** (US$).
+- The **demonym** of each country (e.g. *Italian*) is kept, and the names of the
+  currencies are shortened by removing the name and the demonym of the country
+  (e.g. *Botswana pula* becomes *pula*).
 
 ## Libraries
 
@@ -89,6 +105,7 @@ geoquiz_project3/
 ├── geoquiz/            # source code
 │   ├── data.py         # download and load the data
 │   ├── cleaning.py     # build the table of the countries
+│   ├── names.py        # compare the names of the countries with the answers
 │   ├── distances.py    # distances between the countries (NumPy)
 │   ├── questions.py    # generate the questions of the quiz
 │   └── main.py
