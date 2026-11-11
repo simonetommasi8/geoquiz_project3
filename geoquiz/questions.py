@@ -81,7 +81,9 @@ def reveals_all(countries, code, column):
     return True
 
 
-def get_country_pool(countries, difficulty, column=None, check_reveal=False):
+def get_country_pool(
+    countries, difficulty, column=None, check_reveal=False, easy_only=False
+):
     """
     Get the countries that can be chosen for a question of a given difficulty.
 
@@ -101,6 +103,10 @@ def get_country_pool(countries, difficulty, column=None, check_reveal=False):
         If True, the countries whose values in ``column`` all reveal the
         country (e.g. Albania and Albanian) are easy questions: they are
         added to the easy pool and removed from the others. Defaults to False.
+    easy_only : bool, optional
+        If True, the type of question is easy for every country (e.g. the
+        region): all the countries are in the easy pool, whatever the GDP,
+        and the other pools are empty. Defaults to False.
 
     Returns
     -------
@@ -121,8 +127,8 @@ def get_country_pool(countries, difficulty, column=None, check_reveal=False):
     for code in by_gdp:
         if column is not None and len(countries.loc[code, column]) == 0:
             continue
-        if check_reveal and reveals_all(countries, code, column):
-            # A question that reveals its answer is easy, whatever the GDP
+        if easy_only or (check_reveal and reveals_all(countries, code, column)):
+            # A question that is easy by nature is easy, whatever the GDP
             if difficulty == "easy":
                 pool.append(code)
         elif code in in_range:
@@ -130,7 +136,9 @@ def get_country_pool(countries, difficulty, column=None, check_reveal=False):
     return pool
 
 
-def choose_country(countries, difficulty, code=None, column=None, check_reveal=False):
+def choose_country(
+    countries, difficulty, code=None, column=None, check_reveal=False, easy_only=False
+):
     """
     Choose the country of a question.
 
@@ -143,7 +151,7 @@ def choose_country(countries, difficulty, code=None, column=None, check_reveal=F
     code : str, optional
         The ``cca3`` code of the country. Defaults to a random country,
         chosen with ``get_country_pool``.
-    column, check_reveal : optional
+    column, check_reveal, easy_only : optional
         Passed to ``get_country_pool``.
 
     Returns
@@ -154,7 +162,9 @@ def choose_country(countries, difficulty, code=None, column=None, check_reveal=F
     check_difficulty(difficulty)
     if code is not None:
         return code
-    return random.choice(get_country_pool(countries, difficulty, column, check_reveal))
+    return random.choice(
+        get_country_pool(countries, difficulty, column, check_reveal, easy_only)
+    )
 
 
 def rank_by_distance(countries, code):
@@ -635,15 +645,54 @@ def make_border_question(countries, difficulty="easy", code=None, negative=None)
     }
 
 
+def make_region_question(countries, difficulty="easy", code=None):
+    """
+    Generate a question about the region of a country (e.g. Europe).
+
+    There are only five regions, so the wrong options cannot be made harder:
+    this type of question is easy for every country.
+
+    Parameters
+    ----------
+    countries : pandas.DataFrame
+        The table of the countries, indexed by ``cca3``.
+    difficulty : str, optional
+        One of ``DIFFICULTIES``. Defaults to ``"easy"``, the only difficulty
+        with countries for this type when ``code`` is not given.
+    code : str, optional
+        The ``cca3`` code of the country. Defaults to a random country.
+
+    Returns
+    -------
+    dict
+        The question, with the keys ``type``, ``difficulty``, ``text``,
+        ``options`` and ``answer``.
+    """
+    code = choose_country(countries, difficulty, code, easy_only=True)
+    country = countries.loc[code]
+    answer = country["region"]
+    text = "In which region of the world is {name}?"
+
+    return {
+        "type": "region",
+        "difficulty": difficulty,
+        "text": text.format(name=country["name"]),
+        "options": make_options(countries, code, difficulty, answer, "region"),
+        "answer": answer,
+    }
+
+
 # Each type of question, with the column that a country needs to have at
-# least one value in (e.g. Micronesia has no currency), and whether the
-# values that reveal the country make the question easy
+# least one value in (e.g. Micronesia has no currency), whether the values
+# that reveal the country make the question easy, and whether the type is
+# easy for every country
 QUESTION_MAKERS = [
-    (make_capital_question, "capitals", True),
-    (make_flag_question, "name", False),
-    (make_currency_question, "short_currencies", True),
-    (make_language_question, "languages", True),
-    (make_border_question, "borders", False),
+    (make_capital_question, "capitals", True, False),
+    (make_flag_question, "name", False, False),
+    (make_currency_question, "short_currencies", True, False),
+    (make_language_question, "languages", True, False),
+    (make_border_question, "borders", False, False),
+    (make_region_question, None, False, True),
 ]
 
 
@@ -670,10 +719,17 @@ def make_next_question(countries, difficulty, used_codes):
     ValueError
         If all the countries of the difficulty have already been asked.
     """
-    make_question, column, check_reveal = random.choice(QUESTION_MAKERS)
+    makers = []
+    for maker in QUESTION_MAKERS:
+        easy_only = maker[3]
+        # The types that are easy for every country are only in easy questions
+        if difficulty == "easy" or not easy_only:
+            makers.append(maker)
+    make_question, column, check_reveal, easy_only = random.choice(makers)
 
     available = []
-    for code in get_country_pool(countries, difficulty, column, check_reveal):
+    pool = get_country_pool(countries, difficulty, column, check_reveal, easy_only)
+    for code in pool:
         if code not in used_codes:
             available.append(code)
     if len(available) == 0:
