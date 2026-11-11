@@ -195,6 +195,28 @@ def add_computed_columns(table):
     return table
 
 
+def remove_unknown_borders(table):
+    """
+    Remove from the borders the countries that are not in the table.
+
+    Parameters
+    ----------
+    table : pandas.DataFrame
+        The countries, indexed by ``cca3``, with the ``borders`` column.
+
+    Returns
+    -------
+    pandas.DataFrame
+        The countries, with only the borders that are rows of the table
+        (e.g. South Korea has no borders left, since North Korea is excluded).
+    """
+    codes = set(table.index)
+    table["borders"] = table["borders"].apply(
+        lambda borders: [code for code in borders if code in codes]
+    )
+    return table
+
+
 def build_countries_table(path=COUNTRIES_PATH):
     """
     Build the table of the countries used by the quiz.
@@ -229,4 +251,4 @@ def build_countries_table(path=COUNTRIES_PATH):
     table = table.set_index("cca3")
     if not table.index.is_unique:
         raise ValueError("The country codes (cca3) are not unique")
-    return table
+    return remove_unknown_borders(table)
