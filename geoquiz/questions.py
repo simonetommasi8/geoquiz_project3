@@ -3,6 +3,7 @@
 import random
 
 from geoquiz.distances import distances_from
+from geoquiz.formatting import format_value
 from geoquiz.names import reveals_country
 
 N_WRONG_OPTIONS = 3
@@ -39,6 +40,13 @@ COMPARISON_GAPS = {
 # The right value must be at least 5% larger (or smaller) than the second:
 # with closer values the answer would depend on the year of the data
 MIN_RATIO = 1.05
+
+# The columns of the numeric questions, with their names in the text
+NUMERIC_COLUMNS = {"population": "population", "area": "area"}
+
+# For each difficulty, how many times each option is larger than the
+# previous one: the closer the options, the harder
+NUMERIC_STEPS = {"easy": 4, "medium": 2, "hard": 1.3}
 
 FLAG_URL = "https://raw.githubusercontent.com/mledoze/countries/master/data/"
 
@@ -844,6 +852,73 @@ def make_comparison_question(
     }
 
 
+def make_numeric_question(countries, difficulty="easy", code=None, column=None):
+    """
+    Generate a question about the population or the area of a country.
+
+    The four options are like the steps of a ladder: each one is
+    ``NUMERIC_STEPS[difficulty]`` times the previous one, and the right
+    answer is on a random step, so it can be the smallest, the largest or
+    one in the middle. The steps that would give impossible options
+    (larger or smaller than every country of the table) are not used.
+    All the options are rounded in the same way, so that the right one
+    does not look more precise than the others.
+
+    Parameters
+    ----------
+    countries : pandas.DataFrame
+        The table of the countries, indexed by ``cca3``.
+    difficulty : str, optional
+        One of ``DIFFICULTIES``. Defaults to ``"easy"``.
+    code : str, optional
+        The ``cca3`` code of the country. Defaults to a random country,
+        chosen according to the difficulty.
+    column : str, optional
+        One of the keys of ``NUMERIC_COLUMNS``. Defaults to a random column.
+
+    Returns
+    -------
+    dict
+        The question, with the keys ``type``, ``difficulty``, ``text``,
+        ``options`` and ``answer``. The options are sorted from the
+        smallest, as usual for numbers.
+    """
+    code = choose_country(countries, difficulty, code)
+    country = countries.loc[code]
+    if column is None:
+        column = random.choice(list(NUMERIC_COLUMNS))
+
+    value = country[column]
+    step = NUMERIC_STEPS[difficulty]
+    min_value = countries[column].min()
+    max_value = countries[column].max()
+
+    # The possible positions of the right answer, from the smallest option
+    positions = []
+    for position in range(N_WRONG_OPTIONS + 1):
+        lowest = value / step**position
+        highest = value * step ** (N_WRONG_OPTIONS - position)
+        # No option can be smaller or larger than every country (e.g. a
+        # population larger than the one of China)
+        if lowest >= min_value and highest <= max_value:
+            positions.append(position)
+    position = random.choice(positions)
+
+    options = []
+    for i in range(N_WRONG_OPTIONS + 1):
+        options.append(format_value(value * step ** (i - position), column))
+    answer = options[position]
+    text = "What is the {label} of {name}?"
+
+    return {
+        "type": "numeric",
+        "difficulty": difficulty,
+        "text": text.format(label=NUMERIC_COLUMNS[column], name=country["name"]),
+        "options": options,
+        "answer": answer,
+    }
+
+
 # Each type of question, with the column that a country needs to have at
 # least one value in (e.g. Micronesia has no currency), whether the values
 # that reveal the country make the question easy, and whether the type is
@@ -856,6 +931,7 @@ QUESTION_MAKERS = [
     (make_border_question, "borders", False, False),
     (make_region_question, None, False, True),
     (make_comparison_question, None, False, False),
+    (make_numeric_question, None, False, False),
 ]
 
 
