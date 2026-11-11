@@ -9,9 +9,20 @@ for the *Coding for Data Science and Data Management* course (A.Y. 2026/27).
 
 GeoQuiz automatically generates geography quizzes about the countries of the world.
 
-- The questions are about the **capital**, the **flag**, the **currency** and an
-  **official language** of a country.
 - Each question has **four possible answers**, only one of which is correct.
+- There are eight types of questions:
+
+| Type | Example |
+|------|---------|
+| Capital | *What is the capital of Italy?* |
+| Flag | *Which country does this flag belong to?* |
+| Currency | *Which currency is used in Botswana?* |
+| Language | *Which of these is an official language of Belgium?* |
+| Borders | *Which of these countries shares a land border with Italy?* (or *does not share*) |
+| Region | *In which region of the world is San Marino?* |
+| Comparison | *Which of these countries has the largest population?* (also GDP and area, largest or smallest) |
+| Number | *What is the area of Italy?* (also the population) |
+
 - The **difficulty** can be fixed (easy, medium or hard) or **adaptive**, following
   the answers of the player: in harder questions, the countries are less known and
   the wrong answers are more similar to the right one.
@@ -35,6 +46,26 @@ central points, computed with the haversine formula on a spherical Earth.
 Neighbouring countries are considered at distance 0, since they touch each other
 even when their central points are far apart (e.g. Italy and France).
 
+Some types of questions follow their own rules:
+
+- **Borders:** at the hard level, the wrong answers are near countries that are
+  not neighbours. In the negative form, the three wrong answers are neighbours
+  and the right one is a near country that is not.
+- **Region:** with only five regions (Africa, Americas, Asia, Europe, Oceania),
+  the wrong answers cannot be made harder, so these questions are always easy.
+  The regions are the ones of the dataset, also for transcontinental countries
+  (Russia in Europe, Turkey in Asia).
+- **Comparison:** the difficulty depends on how close the values are. The
+  countries are ranked by the value, and the second country is 40 or more
+  positions after the right answer (easy), from 10 to 39 (medium) or less than
+  10 (hard). The right value is always at least 5% larger (or smaller) than the
+  others, so the answer does not depend on the year of the data.
+- **Number:** the four options are like the steps of a ladder, each one 4 (easy),
+  2 (medium) or 1.3 (hard) times the previous one, with the right answer on a
+  random step. All the options are rounded to two significant digits (e.g.
+  *59 million*, *300,000 km²*), so the right one does not look more precise,
+  and no option is larger or smaller than every country.
+
 In the **adaptive** mode, the quiz starts at the medium level, and each question
 is one level harder after a right answer and one level easier after a wrong one.
 In every quiz, each question is about a different country.
@@ -48,7 +79,9 @@ their country are only used in easy questions, whatever the GDP of the country.
 Every question has a single right answer: the values shared with the country
 (e.g. the euro of its neighbours) and the flags that look almost the same
 (Indonesia and Monaco, Chad and Romania, Netherlands and Luxembourg) are never
-used as wrong answers.
+used as wrong answers. In the same way, the neighbours with a similar name
+(*Niger* and *Nigeria*, *Sudan* and *South Sudan*) are the right answer of a
+border question only at the easy level.
 
 
 ## Data
@@ -84,6 +117,9 @@ the quiz read their data from this table.
 - The **demonym** of each country (e.g. *Italian*) is kept, and the names of the
   currencies are shortened by removing the name and the demonym of the country
   (e.g. *Botswana pula* becomes *pula*).
+- The **borders** with countries that are not in the table are removed (e.g.
+  Vatican City for Italy, Western Sahara for Morocco): South Korea is left with
+  no neighbours, like the island countries.
 
 ## Libraries
 
@@ -107,6 +143,7 @@ geoquiz_project3/
 │   ├── cleaning.py     # build the table of the countries
 │   ├── names.py        # compare the names of the countries with the answers
 │   ├── distances.py    # distances between the countries (NumPy)
+│   ├── formatting.py   # write the numbers in a readable way
 │   ├── questions.py    # generate the questions of the quiz
 │   └── main.py
 └── notebooks/
