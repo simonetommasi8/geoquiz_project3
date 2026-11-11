@@ -25,6 +25,21 @@ GDP_RANK_RANGES = {
 
 DIFFICULTIES = list(RANK_RANGES)
 
+# The columns of the comparison questions, with their names in the text
+COMPARISON_COLUMNS = {"population": "population", "gdp": "GDP", "area": "area"}
+
+# For each difficulty, how many positions apart the right answer and the
+# second country are in the ranking of the column: the nearer, the harder
+COMPARISON_GAPS = {
+    "easy": (40, None),  # 40 positions or more
+    "medium": (10, 40),  # from 10 to 39 positions
+    "hard": (1, 10),  # less than 10 positions
+}
+
+# The right value must be at least 5% larger (or smaller) than the second:
+# with closer values the answer would depend on the year of the data
+MIN_RATIO = 1.05
+
 FLAG_URL = "https://raw.githubusercontent.com/mledoze/countries/master/data/"
 
 # Pairs of flags that look almost the same: they are never in the same question
@@ -682,6 +697,153 @@ def make_region_question(countries, difficulty="easy", code=None):
     }
 
 
+def make_comparison_options(countries, code, difficulty, column, largest):
+    """
+    Choose the other three countries of a comparison question.
+
+    The countries are ranked by ``column``, from the largest value if
+    ``largest`` is True, or from the smallest. The second country comes
+    after the right answer in the ranking, at the distance given by
+    ``COMPARISON_GAPS``, and the other two come after the second. All the
+    countries are chosen with ``get_country_pool``, so they are as well
+    known as the right answer.
+
+    Parameters
+    ----------
+    countries : pandas.DataFrame
+        The table of the countries, indexed by ``cca3``.
+    code : str
+        The ``cca3`` code of the right answer.
+    difficulty : str
+        One of ``DIFFICULTIES``.
+    column : str
+        One of the keys of ``COMPARISON_COLUMNS``.
+    largest : bool
+        True if the right answer has the largest value, False if it has
+        the smallest.
+
+    Returns
+    -------
+    list of str
+        The ``cca3`` codes of the three other countries, or an empty list
+        if the right answer has not enough countries after it.
+    """
+    pool = get_country_pool(countries, difficulty)
+    ranking = countries.sort_values(column, ascending=not largest).index.tolist()
+    position = ranking.index(code)
+    value = countries.loc[code, column]
+
+    start, end = COMPARISON_GAPS[difficulty]
+    stop = None
+    if end is not None:
+        stop = position + end
+
+    seconds = []
+    for other_code in ranking[position + start : stop]:
+        if other_code not in pool:
+            continue
+        other_value = countries.loc[other_code, column]
+        # The values must be clearly different, so that the answer is certain
+        if largest and value < MIN_RATIO * other_value:
+            continue
+        if not largest and other_value < MIN_RATIO * value:
+            continue
+        seconds.append(other_code)
+
+    random.shuffle(seconds)
+    for second in seconds:
+        others = []
+        for other_code in ranking[ranking.index(second) + 1 :]:
+            if other_code in pool:
+                others.append(other_code)
+        if len(others) >= 2:
+            return [second] + random.sample(others, 2)
+    return []
+
+
+def make_comparison_question(
+    countries, difficulty="easy", code=None, column=None, largest=None
+):
+    """
+    Generate a question about which country has the largest or smallest value.
+
+    The question compares the population, the GDP or the area of four
+    countries. The harder the question, the less known the countries and
+    the closer the right answer and the second country in the ranking.
+
+    Parameters
+    ----------
+    countries : pandas.DataFrame
+        The table of the countries, indexed by ``cca3``.
+    difficulty : str, optional
+        One of ``DIFFICULTIES``. Defaults to ``"easy"``.
+    code : str, optional
+        The ``cca3`` code of the right answer. Defaults to a random country,
+        chosen according to the difficulty.
+    column : str, optional
+        One of the keys of ``COMPARISON_COLUMNS``. Defaults to a random
+        column for which the question can be made.
+    largest : bool, optional
+        True to ask for the largest value, False for the smallest. Defaults
+        to a random choice for which the question can be made.
+
+    Returns
+    -------
+    dict
+        The question, with the keys ``type``, ``difficulty``, ``text``,
+        ``options`` and ``answer``.
+
+    Raises
+    ------
+    ValueError
+        If the question cannot be made for the country (e.g. the smallest
+        country of the table cannot be the answer about the largest area).
+    """
+    code = choose_country(countries, difficulty, code)
+
+    columns = list(COMPARISON_COLUMNS)
+    if column is not None:
+        columns = [column]
+    directions = [True, False]
+    if largest is not None:
+        directions = [largest]
+    choices = []
+    for one_column in columns:
+        for direction in directions:
+            choices.append((one_column, direction))
+    random.shuffle(choices)
+
+    # The first column and direction with enough countries after the answer
+    others = []
+    for one_column, direction in choices:
+        others = make_comparison_options(
+            countries, code, difficulty, one_column, direction
+        )
+        if len(others) > 0:
+            break
+    if len(others) == 0:
+        raise ValueError(f"No comparison question for {code} at the {difficulty} level")
+
+    answer = countries.loc[code, "name"]
+    options = [answer]
+    for other_code in others:
+        options.append(countries.loc[other_code, "name"])
+    random.shuffle(options)
+
+    extreme = "smallest"
+    if direction:
+        extreme = "largest"
+    text = "Which of these countries has the {extreme} {label}?"
+
+    return {
+        "type": "comparison",
+        "difficulty": difficulty,
+        "text": text.format(extreme=extreme, label=COMPARISON_COLUMNS[one_column]),
+        "options": options,
+        "answer": answer,
+    }
+
+
 # Each type of question, with the column that a country needs to have at
 # least one value in (e.g. Micronesia has no currency), whether the values
 # that reveal the country make the question easy, and whether the type is
@@ -693,6 +855,7 @@ QUESTION_MAKERS = [
     (make_language_question, "languages", True, False),
     (make_border_question, "borders", False, False),
     (make_region_question, None, False, True),
+    (make_comparison_question, None, False, False),
 ]
 
 
