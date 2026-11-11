@@ -513,6 +513,128 @@ def make_language_question(countries, difficulty="easy", code=None):
     )
 
 
+def choose_non_neighbour(countries, code, difficulty):
+    """
+    Choose a country that does not share a land border with a given country.
+
+    The harder the question, the nearer the chosen country.
+
+    Parameters
+    ----------
+    countries : pandas.DataFrame
+        The table of the countries, indexed by ``cca3``.
+    code : str
+        The ``cca3`` code of the country of the question.
+    difficulty : str
+        One of ``DIFFICULTIES``.
+
+    Returns
+    -------
+    str
+        The ``cca3`` code of the chosen country.
+
+    Raises
+    ------
+    ValueError
+        If every other country is a neighbour.
+    """
+    borders = countries.loc[code, "borders"]
+    candidates = []
+    for other_code in get_candidates(countries, code, difficulty):
+        if other_code not in borders:
+            candidates.append(other_code)
+    if len(candidates) > 0:
+        return random.choice(candidates)
+
+    # All the candidates are neighbours (e.g. China at the hard level):
+    # the nearest country that is not a neighbour is chosen
+    for other_code in rank_by_distance(countries, code):
+        if other_code not in borders:
+            return other_code
+    raise ValueError(f"All the countries share a border with {code}")
+
+
+def make_border_question(countries, difficulty="easy", code=None, negative=None):
+    """
+    Generate a question about the countries that border a country.
+
+    The question asks which of the options shares a land border with the
+    country, or, if ``negative`` is True, which of them does not.
+
+    Parameters
+    ----------
+    countries : pandas.DataFrame
+        The table of the countries, indexed by ``cca3``.
+    difficulty : str, optional
+        One of ``DIFFICULTIES``. Defaults to ``"easy"``.
+    code : str, optional
+        The ``cca3`` code of the country. Defaults to a random country with
+        at least one neighbour, chosen according to the difficulty.
+    negative : bool, optional
+        If True, the right answer is the only option that is not a
+        neighbour. Defaults to a random choice, when the country has at
+        least ``N_WRONG_OPTIONS`` neighbours.
+
+    Returns
+    -------
+    dict
+        The question, with the keys ``type``, ``difficulty``, ``text``,
+        ``options`` and ``answer``.
+
+    Raises
+    ------
+    ValueError
+        If the country has no neighbours, or if ``negative`` is True and
+        the country has fewer than ``N_WRONG_OPTIONS`` neighbours.
+    """
+    code = choose_country(countries, difficulty, code, "borders")
+    country = countries.loc[code]
+    neighbours = []
+    for neighbour_code in country["borders"]:
+        neighbours.append(countries.loc[neighbour_code, "name"])
+    if len(neighbours) == 0:
+        raise ValueError(f"{country['name']} has no neighbours in the table")
+
+    if negative is None:
+        # The three wrong options of a negative question are neighbours
+        negative = len(neighbours) >= N_WRONG_OPTIONS and random.choice([True, False])
+
+    if negative:
+        if len(neighbours) < N_WRONG_OPTIONS:
+            raise ValueError(f"{country['name']} has too few neighbours")
+        other_code = choose_non_neighbour(countries, code, difficulty)
+        answer = countries.loc[other_code, "name"]
+        options = random.sample(neighbours, N_WRONG_OPTIONS) + [answer]
+        random.shuffle(options)
+        question_type = "not_border"
+        text = "Which of these countries does not share a land border with {name}?"
+    else:
+        answers = []
+        for neighbour in neighbours:
+            # At medium and hard, a neighbour with a similar name (e.g. Niger
+            # and Nigeria) is not the answer
+            if difficulty != "easy" and reveals_country(
+                neighbour, country["name"], country["demonym"]
+            ):
+                continue
+            answers.append(neighbour)
+        if len(answers) == 0:
+            answers = neighbours
+        answer = random.choice(answers)
+        # All the neighbours are right, so none of them can be a wrong option
+        options = make_options(countries, code, difficulty, answer, "name", neighbours)
+        question_type = "border"
+        text = "Which of these countries shares a land border with {name}?"
+
+    return {
+        "type": question_type,
+        "difficulty": difficulty,
+        "text": text.format(name=country["name"]),
+        "options": options,
+        "answer": answer,
+    }
+
+
 # Each type of question, with the column that a country needs to have at
 # least one value in (e.g. Micronesia has no currency), and whether the
 # values that reveal the country make the question easy
@@ -521,6 +643,7 @@ QUESTION_MAKERS = [
     (make_flag_question, "name", False),
     (make_currency_question, "short_currencies", True),
     (make_language_question, "languages", True),
+    (make_border_question, "borders", False),
 ]
 
 
