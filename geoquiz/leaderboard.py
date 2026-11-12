@@ -59,7 +59,9 @@ def load_leaderboard(path=LEADERBOARD_PATH):
     """
     if not os.path.exists(path):
         return pd.DataFrame(columns=LEADERBOARD_COLUMNS)
-    return pd.read_csv(path)
+    # The names are read as text, so that a name like "007" is not turned
+    # into the number 7
+    return pd.read_csv(path, dtype={"name": str})
 
 
 def save_leaderboard(leaderboard, path=LEADERBOARD_PATH):
