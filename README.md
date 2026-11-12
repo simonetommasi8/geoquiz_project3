@@ -83,6 +83,37 @@ used as wrong answers. In the same way, the neighbours with a similar name
 (*Niger* and *Nigeria*, *Sudan* and *South Sudan*) are the right answer of a
 border question only at the easy level.
 
+### Score
+
+A right answer is worth **100**, **200** or **300** points for an easy, medium
+or hard question. Some types of questions are harder than others at the same
+level, so their points are multiplied by a weight:
+
+| Type | Weight |
+|------|--------|
+| Capital, Flag, Language, Region | 1 |
+| Currency | 1.25 |
+| Borders, Comparison | 1.5 |
+| Number | 2 |
+
+A wrong answer is worth 0 points, without penalties. Since the type of each
+question is random, the luck of the questions plays a small part in the score,
+as in many arcade games; the difficulty matters more, since a right answer
+in the adaptive mode leads to harder questions, which are worth more points.
+
+### Leaderboard
+
+At the end of a quiz in the **adaptive** mode, the player writes a name and the
+score is added to a leaderboard with the 10 best scores. Only the adaptive mode
+is ranked, since all the players start at the same level and the scores can be
+compared. The scores are saved in a CSV file (`data/leaderboard.csv`, not tracked
+by Git): when the app runs online, the file is reset every time the app restarts.
+
+### Charts
+
+At the end of a quiz, two charts show the results: the right answers for each
+type of question, and the score after each question.
+
 
 ## Data
 
@@ -128,6 +159,7 @@ the quiz read their data from this table.
 | `requests` | downloading the countries dataset and calling the World Bank API |
 | `pandas` | building, merging and cleaning the table of the countries |
 | `numpy` | computing the distances between the countries |
+| `matplotlib` | drawing the charts with the results of a quiz |
 
 Exact versions are listed in [`requirements.txt`](requirements.txt).
 
@@ -137,7 +169,8 @@ Exact versions are listed in [`requirements.txt`](requirements.txt).
 geoquiz_project3/
 ├── README.md           # project description and instructions
 ├── requirements.txt    # Python libraries needed by the project
-├── data/               # downloaded data (not tracked by Git)
+├── data/               # downloaded data and leaderboard (not tracked by Git)
+├── fonts/              # the Poppins font of the charts, with its license
 ├── geoquiz/            # source code
 │   ├── data.py         # download and load the data
 │   ├── cleaning.py     # build the table of the countries
@@ -145,6 +178,9 @@ geoquiz_project3/
 │   ├── distances.py    # distances between the countries (NumPy)
 │   ├── formatting.py   # write the numbers in a readable way
 │   ├── questions.py    # generate the questions of the quiz
+│   ├── scoring.py      # compute the score of a quiz
+│   ├── leaderboard.py  # keep the best scores of the players
+│   ├── plots.py        # draw the charts with the results (matplotlib)
 │   └── main.py
 └── notebooks/
 ```
@@ -173,6 +209,12 @@ python -m geoquiz.main
 
 The quiz will be played through a **Streamlit** web app, which is still in
 development: this section will be updated with the instructions to start it.
+
+## Credits
+
+The charts use the [Poppins](https://fonts.google.com/specimen/Poppins) font
+by the Poppins Project Authors, released under the
+[SIL Open Font License](fonts/OFL.txt).
 
 ## Author
 
