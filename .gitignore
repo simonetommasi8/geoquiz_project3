@@ -227,3 +227,6 @@ data/countries.json
 
 # Personal notebook to try code
 notebooks/data_exploration.ipynb
+
+# Scores of the players
+data/leaderboard.csv
