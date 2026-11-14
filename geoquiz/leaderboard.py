@@ -55,9 +55,10 @@ def load_leaderboard(path=LEADERBOARD_PATH):
     -------
     pandas.DataFrame
         One row for each score, with the columns of ``LEADERBOARD_COLUMNS``.
-        The table is empty if the file does not exist yet.
+        The table is empty if the file does not exist yet, or if it is
+        empty (e.g. its content was deleted by hand).
     """
-    if not os.path.exists(path):
+    if not os.path.exists(path) or os.path.getsize(path) == 0:
         return pd.DataFrame(columns=LEADERBOARD_COLUMNS)
     # The names are read as text, so that a name like "007" is not turned
     # into the number 7
@@ -126,3 +127,29 @@ def get_top_scores(leaderboard, n=TOP_SCORES):
     top = leaderboard.sort_values("score", ascending=False, kind="stable").head(n)
     top.index = range(1, len(top) + 1)
     return top
+
+
+def is_new_record(leaderboard, score):
+    """
+    Tell whether a score beats all the scores of the leaderboard.
+
+    Parameters
+    ----------
+    leaderboard : pandas.DataFrame
+        The leaderboard before the new score, as returned by
+        ``load_leaderboard``.
+    score : int
+        The points of the player.
+
+    Returns
+    -------
+    bool
+        True if the score is higher than every score of the leaderboard
+        (the first positive score is a record too). A score equal to the
+        record does not beat it.
+    """
+    if score <= 0:
+        return False
+    if len(leaderboard) == 0:
+        return True
+    return bool(score > leaderboard["score"].max())
