@@ -3,11 +3,15 @@
 A multiple-choice geography quiz generator, developed as the Python project
 for the *Coding for Data Science and Data Management* course (A.Y. 2026/27).
 
-> **Status:** work in progress.
+**▶ Play online: [https://geoquizsimo.streamlit.app](https://geoquizsimo.streamlit.app)**
+
+> If the app has not been used for a while, Streamlit puts it to sleep: click
+> the button to wake it up and wait about a minute.
 
 ## About the Project
 
-GeoQuiz automatically generates geography quizzes about the countries of the world.
+GeoQuiz automatically generates geography quizzes about the countries of the world,
+and lets a player answer them in a **Streamlit** web app.
 
 - Each question has **four possible answers**, only one of which is correct.
 - There are eight types of questions:
@@ -160,6 +164,7 @@ the quiz read their data from this table.
 | `pandas` | building, merging and cleaning the table of the countries |
 | `numpy` | computing the distances between the countries |
 | `matplotlib` | drawing the charts with the results of a quiz |
+| `streamlit` | the web app of the quiz |
 
 Exact versions are listed in [`requirements.txt`](requirements.txt).
 
@@ -169,6 +174,9 @@ Exact versions are listed in [`requirements.txt`](requirements.txt).
 geoquiz_project3/
 ├── README.md           # project description and instructions
 ├── requirements.txt    # Python libraries needed by the project
+├── app.py              # the Streamlit web app
+├── .streamlit/
+│   └── config.toml     # colors and font of the app
 ├── data/               # downloaded data and leaderboard (not tracked by Git)
 ├── fonts/              # the Poppins font of the charts, with its license
 ├── geoquiz/            # source code
@@ -181,9 +189,12 @@ geoquiz_project3/
 │   ├── scoring.py      # compute the score of a quiz
 │   ├── leaderboard.py  # keep the best scores of the players
 │   ├── plots.py        # draw the charts with the results (matplotlib)
-│   └── main.py
-└── notebooks/
+│   └── main.py         # build the table of the countries and print it
 ```
+
+The logic of the quiz is in the `geoquiz` package, while `app.py` only shows
+the questions and collects the answers: the same functions can be used in a
+notebook or in a script.
 
 ## Setup
 
@@ -199,16 +210,37 @@ pip install -r requirements.txt
 
 ## Usage
 
-At the moment, the project builds the table of the countries and prints some
-data about it. From the root folder of the project, with the virtual environment
-active, run:
+The quiz can be played online at [https://geoquizsimo.streamlit.app](https://geoquizsimo.streamlit.app),
+or on your own computer. From the root folder of the project, with the virtual environment active, run:
+
+```bash
+streamlit run app.py
+```
+
+The app opens in the browser at `http://localhost:8501`. The first time, the
+data of the countries are downloaded, which takes a few seconds; then they are
+kept in memory for one day. To stop the app, press `Ctrl + C` in the terminal.
+
+To check that the data are downloaded and cleaned correctly, without the app,
+run:
 
 ```bash
 python -m geoquiz.main
 ```
 
-The quiz will be played through a **Streamlit** web app, which is still in
-development: this section will be updated with the instructions to start it.
+It prints the size of the table of the countries (192 rows) and the data of Italy.
+
+## Limitations
+
+- The leaderboard is saved in a CSV file: in the online app, it is reset every
+  time the app restarts or is updated.
+- The difficulty of a country depends on its GDP, which is a good but not
+  perfect measure of how well known it is.
+- The languages are the official ones of the dataset, which can differ from the
+  languages actually spoken (e.g. French is widely spoken in Morocco, but it is
+  not an official language there).
+- The type of each question is random, so the score also depends on the luck of
+  the questions.
 
 ## Credits
 
